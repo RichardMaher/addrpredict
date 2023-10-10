@@ -1,0 +1,201 @@
+ <!DOCTYPE html>
+    <html>
+      <head>
+        <link type="text/css" rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500">
+		<style type="text/css">
+			#autocomplete {
+				background-color: lightblue;
+			}
+			.pac-item:hover {
+				background-color: lightgray;
+			}
+			.pac-icon {
+				background-image: url('https://maps.gstatic.com/mapfiles/place_api/icons/v1/png_71/geocode-71.png');
+				background-repeat: no-repeat;
+				background-position: center;
+				background-size: contain;
+			}
+			input[type=radio]:checked {
+				accent-color: lightblue;
+			}
+			#results > input {
+				background-color: #F8F0E3;
+			}
+			#mapLinkIcon {
+				height: 100px;
+				width: 100px;
+				display: none;
+				background-image: url('https://developers.google.com/static/maps/images/maps-icon.svg');
+				background-repeat: no-repeat;
+				background-position: center;
+				background-size: contain;
+			}
+			#mapLinkIcon:hover {
+				cursor: pointer;
+			}
+		</style>
+		<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDJjwaXtrNqo4Mgfrb_YojsoLfetaQKwIc&libraries=places&callback=initAutocomplete" async defer></script>
+        <script>
+'use strict'
+			var PERTH, CANBERRA;
+            var autocomplete, perthBias, canberraBias, mapLink, mapURL;
+			
+			const RADIUS = 7500;
+
+			document.addEventListener('DOMContentLoaded', () => {
+				mapLink = document.getElementById("mapLinkIcon");
+				
+				mapLink.addEventListener('click',
+					(e) => {
+						window.open(mapURL);
+					});
+				
+				// Allow the user, config file, etc set the city to bias searches		   
+				document.getElementById("cityBias").addEventListener("click", 
+					(e) => {
+						
+						if (e.target.tagName.toLowerCase() == "input" && 
+							e.target.type.toLowerCase()    == "radio" &&
+							e.target.name == "cityName")
+						{
+							if (e.target.id == "cb1") {
+								autocomplete.setBounds(perthBias.getBounds());
+							} else {
+								autocomplete.setBounds(canberraBias.getBounds());
+							}
+						}	
+					}
+				); 
+           })
+			
+			function initAutocomplete() {
+			  PERTH = new google.maps.LatLng(-31.9523, 115.8613);
+			  CANBERRA = new google.maps.LatLng(-35.282001, 149.128998);
+			  perthBias = new google.maps.Circle({center: PERTH, radius: RADIUS});
+			  canberraBias = new google.maps.Circle({center: CANBERRA, radius: RADIUS});
+
+			  const addressInput = document.getElementById('autocomplete');
+			  
+			  autocomplete = new google.maps.places.Autocomplete(
+				  addressInput,
+				  { types: ['address'],
+					bounds: perthBias.getBounds(), 
+					componentRestrictions: { country: 'AU' },
+					sessiontoken: crypto.randomUUID()
+				  });
+				  
+			  var x = 1;
+
+			  google.maps.event.addListener(autocomplete, 'place_changed', function() {
+				var place = autocomplete.getPlace();
+				if (!place.geometry) {
+					alert("No selection made");
+					document.getElementById('autocomplete').value="";
+					mapURL = null;
+					mapLink.style.display="none";
+				} else {
+					addressInput.text = place.formatted_address;
+					
+					mapLink.style.display="block";
+					mapURL = place.url;
+					
+					var outUnit = document.getElementById("unit");
+					var outNumber = document.getElementById("number");
+					var outStreet = document.getElementById("street");
+					var outSuburb = document.getElementById("suburb");
+					var outState = document.getElementById("state");
+					var outPostCode = document.getElementById("postCode");
+					
+					outUnit.value = "";
+					outNumber.value = "";
+					outStreet.value = "";
+					outSuburb.value = "";
+					outState.value = "";
+					outPostCode.value = "";
+
+					place.address_components.forEach((comp) => { 
+						if (comp.types.find((compType) => {
+							return compType == "subpremise"
+						}))
+						{
+							outUnit.value = comp.long_name;
+						}
+						
+						if (comp.types.find((compType) => {
+							return compType == "street_number"
+						}))
+						{
+							outNumber.value = comp.long_name;
+						}
+						
+						if (comp.types.find((compType) => {
+							return compType == "route"
+						}))
+						{
+							outStreet.value = comp.long_name;
+						}
+						
+						if (comp.types.find((compType) => {
+							return compType == "locality"
+						}))
+						{
+							outSuburb.value = comp.long_name;
+						}
+						
+						if (comp.types.find((compType) => {
+							return compType == "administrative_area_level_1"
+						}))
+						{
+							outState.value = comp.short_name;
+						}
+						
+						if (comp.types.find((compType) => {
+							return compType == "postal_code"
+						}))
+						{
+							outPostCode.value = comp.long_name;
+						}
+						
+					})
+					
+					document.getElementById("HTMLAddress").innerHTML = place.adr_address;
+					
+					autocomplete.sessiontoken = crypto.randomUUID();
+				}
+			  });
+			}
+        </script>
+      </head>
+      <body>
+		<h1>Google Places Autocomplete POC</h1>
+        <div id="locationField">
+		  <label for="autocomplete">Address: </label>
+          <input id="autocomplete" type="text" style="width:600px" spellcheck="false" placeholder="Please enter an address to search for"></input></br></br>
+        </div>
+		<div id="results">
+			<label for="unit">Unit: </label>
+			<input id="unit" type="text" style="width:100px" spellcheck="false"</input></br></br>
+			<label for="number">Number: </label>
+			<input id="number" type="text" style="width:100px" spellcheck="false"</input></br></br>
+			<label for="street">Street: </label>
+			<input id="street" type="text" style="width:200px" spellcheck="false"</input></br></br>
+			<label for="suburb">Suburb: </label>
+			<input id="suburb" type="text" style="width:200px" spellcheck="false"</input></br></br>
+			<label for="state">State: </label>
+			<input id="state" type="text" style="width:100px" spellcheck="false"</input></br></br>
+			<label for="postCode">Post Code: </label>
+			<input id="postCode" type="text" style="width:100px" spellcheck="false"</input></br></br>
+		</div>
+		<div id="HTMLAddress">
+		</div>
+		<div id="mapLinkIcon" title = "Show on Map">
+		</div>
+		<div id="cityBias">
+		  <p>City to bias when searching:</p>
+		  <input type="radio" id="cb1" name="cityName" value="Perth" checked=checked >
+		  <label for="cb1">Perth</label><br>
+		  <input type="radio" id="cb2" name="cityName" value="Canberra">
+		  <label for="cb2">Canberra</label><br>
+		</div>
+      </body>
+    </html>
